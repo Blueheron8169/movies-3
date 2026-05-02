@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CineCircle Final | Reviews, Ratings & Real AI</title>
+    
+    <script src="https://unpkg.com/compromise@latest/builds/compromise.min.js"></script>
+    <script src="https://unpkg.com/sentiment@latest/builds/sentiment.min.js"></script>
+
+    <style>
+        :root {
+            --bg-color: #0c0c0e;
+            --surface-color: #161619;
+            --primary-color: #e50914; /* Red */
+            --ai-color: #8a2be2; /* Purple for AI */
+            --online-color: #00c9a7; /* Teal */
+            --text-main: #ffffff;
+            --text-muted: #888888;
+            --font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            --star-gold: #ffd700;
+        }
+
+        body { margin: 0; padding: 0; background-color: var(--bg-color); color: var(--text-main); font-family: var(--font-family); }
+
+        /* Navbar */
+        header { display: flex; justify-content: space-between; align-items: center; padding: 15px 40px; background-color: var(--surface-color); border-bottom: 1px solid #222; position: sticky; top: 0; z-index: 1000; }
+        .logo { font-size: 24px; font-weight: bold; color: var(--primary-color); letter-spacing: 1px; }
+
+        /* User Profile Area */
+        #user-profile { display: none; align-items: center; gap: 15px; }
+        #user-profile img { width: 40px; height: 40px; border-radius: 50%; border: 2px solid var(--primary-color); }
+
+        /* General Buttons */
+        button { background-color: var(--primary-color); color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer; font-weight: bold; font-size: 14px; transition: 0.2s; }
+        button:hover { opacity: 0.8; }
+        .logout-btn { background-color: transparent; border: 1px solid var(--text-muted); color: var(--text-muted); }
+
+        /* Main Content Container */
+        .container { max-width: 950px; margin: 40px auto; padding: 0 20px; padding-bottom: 60px; }
+
+        /* Login Screen */
+        #login-section { text-align: center; margin-top: 100px; background-color: var(--surface-color); padding: 50px; border-radius: 12px; border: 1px solid #222; }
+        #login-section input { padding: 12px; font-size: 16px; border-radius: 4px; border: 1px solid #333; background-color: var(--bg-color); color: white; margin-right: 10px; width: 250px; }
+
+        #dashboard-section { display: none; }
+
+        /* Global Reusable Box Style */
+        .cine-box { background-color: var(--surface-color); padding: 25px; border-radius: 8px; border: 1px solid #222; margin-bottom: 30px; }
+        .cine-box h3 { margin-top: 0; border-bottom: 1px solid #333; padding-bottom: 10px; margin-bottom: 20px;}
+
+        /* Review Input Star Rating System */
+        .rating-input { display: flex; flex-direction: row-reverse; gap: 5px; font-size: 24px; cursor: pointer; justify-content: flex-end;}
+        .rating-input input { display: none; }
+        .rating-input label { color: #333; transition: color 0.1s; }
+        .rating-input label:hover, .rating-input label:hover ~ label, .rating-input input:checked ~ label { color: var(--star-gold); }
+
+        /* Form Layouts */
+        .review-form { display: flex; flex-direction: column; gap: 15px; margin-top: 10px; }
+        .form-row { display: flex; gap: 15px; }
+        .form-row > * { flex: 1; }
+        input[type="text"], textarea { padding: 12px; background-color: rgba(0,0,0,0.3); border: 1px solid #333; border-radius: 4px; color: white; font-size: 15px; font-family: inherit;}
+
+        /* AI Analysis Indicator on Form */
+        #ai-review-indicator { color: var(--text-muted); font-size: 12px; font-style: italic; }
+
+        /* Card Star Ratings */
+        .stars { color: var(--star-gold); font-size: 16px; margin-bottom: 5px; }
+        
+        /* Online Feed */
+        .feed-container { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+        .feed-card { background-color: #111; padding: 20px; border-radius: 8px; border: 1px solid #333; animation: fadeIn 0.4s ease-in; position: relative; display: flex; flex-direction: column; gap: 10px;}
+        
+        .badge-online { position: absolute; top: 15px; right: 15px; background: rgba(0, 201, 167, 0.1); color: var(--online-color); font-size: 10px; padding: 3px 8px; border-radius: 4px; text-transform: uppercase; font-weight: bold; border: 1px solid rgba(0, 201, 167, 0.3);}
+        .badge-ai-sentiment { display: inline-block; background: rgba(138, 43, 226, 0.1); color: var(--ai-color); font-size: 10px; padding: 3px 8px; border-radius: 4px; text-transform: uppercase; border: 1px solid rgba(138, 43, 226, 0.3); margin-left: 10px;}
+
+        .card-header { display: flex; align-items: center; gap: 12px; margin-bottom: 5px;}
+        .card-header img { width: 40px; height: 40px; border-radius: 50%; border: 1px solid #333;}
+
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+    </style>
+</head>
+<body>
+
+    <header>
+        <div class="logo">CineCircle</div>
+        
+        <div id="user-profile">
+            <span id="user-name"></span>
+            <img id="user-avatar" src="" alt="Avatar">
+            <button class="logout-btn" onclick="handleSignOut()">Leave Club</button>
+        </div>
+    </header>
+
+    <div class="container">
+        <div id="login-section">
+            <h1 style="margin-top: 0; font-size: 36px;">Welcome to CineCircle</h1>
+            <p style="color: #aaa; margin-bottom: 30px; max-width: 500px; margin-left: auto; margin-right: auto;">The digital movie club where you review films, rate them with stars, and upload your findings to the local community hub.</p>
+            <input type="text" id="login-name" placeholder="Enter your reviewer name...">
+            <button onclick="handleSignIn()">Enter Hub</button>
+        </div>
+
+        <div id="dashboard-section">
+            
+            <div class="cine-box">
+                <h3>✍️ New Movie Critique</h3>
+                
+                <div class="review-form">
+                    <div class="form-row" style="align-items: center;">
+                        <input type="text" id="review-movie" placeholder="Movie Title (e.g., The Matrix)">
+                        
+                        <div class="rating-input-container">
+                            <div style="font-size: 12px; color: #aaa; margin-bottom: 2px;">Your Rating</div>
+                            <div class="rating-input">
+                                <input type="radio" name="rating" value="5" id="5stars"><label for="5stars">★</label>
+                                <input type="radio" name="rating" value="4" id="4stars"><label for="4stars">★</label>
+                                <input type="radio" name="rating" value="3" id="3stars"><label for="3stars">★</label>
+                                <input type="radio" name="rating" value="2" id="2stars"><label for="2stars">★</label>
+                                <input type="radio" name="rating" value="1" id="1stars"><label for="1stars">★</label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <input type="text" id="review-title" placeholder="Summary Headline (e.g., Absolutely incredible!)">
+                    <textarea id="review-text" rows="4" placeholder="Share your detailed critique. The local AI will analyze the sentiment of your writing..." oninput="analyzeSentiment()"></textarea>
+                    
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <div id="ai-review-indicator">AI Sentiment: Awaiting Input...</div>
+                        <button onclick="postReview()">Upload Review</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="cine-box">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                    <h3 style="margin: 0; border: none; padding: 0;">🌐 Online Review Hub</h3>
+                    <div style="display: flex; gap: 10px;">
+                        <button onclick="localStorage.removeItem('cineCircle_reviews'); location.reload();" style="padding: 5px 10px; font-size: 12px; background: transparent; border: 1px solid #444; color: #aaa;">Reset Hub</button>
+                        <button onclick="loadFeed()" style="padding: 5px 10px; font-size: 12px; background: var(--online-color); color: #000;">Refresh Feed</button>
+                    </div>
+                </div>
+                
+                <div class="feed-container" id="feed-container">
+                    </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Use standard sentiment analyzer from external library
+        const sentimentAnalyzer = new Sentiment();
+
+        /* --- STATE MANAGEMENT --- */
+        let currentUser = null;
+        // Key names for local storage persistence
+        const KEY_USER = 'cineCircle_user';
+        const KEY_REVIEWS = 'cineCircle_reviews';
+
+        // Pre-loaded "Online" reviews
+        const initialHubData = [
+            { name: "S. Jenkins", avatar: "https://ui-avatars.com/api/?name=SJ&background=ffcc00&color=fff", movie: "Interstellar", rating: 5, title: " Masterpiece", text: "Hans Zimmer gives me chills. Perfect sci-fi epic.", sentiment: "highly-positive" },
+            { name: "Cole", avatar: "https://ui-avatars.com/api/?name=C&background=00c9a7&color=fff", movie: "Madame Web", rating: 1, title: "A genuine disaster", text: "This was a tough watch. Boring, confusing, and bad dialogue.", sentiment: "negative" }
+        ];
+
+        window.onload = () => {
+            const savedUser = localStorage.getItem(KEY_USER);
+            if (savedUser) {
+                currentUser = JSON.parse(savedUser);
+                showDashboard();
+            }
+            
+            // Populate hub if empty
+            if (!localStorage.getItem(KEY_REVIEWS)) {
+                localStorage.setItem(KEY_REVIEWS, JSON.stringify(initialHubData));
+            }
+            loadFeed();
+        };
+
+        /* --- AUTH & UI --- */
+        function handleSignIn() {
+            const nameInput = document.getElementById('login-name').value.trim();
+            if (!nameInput) return alert("Please enter your name.");
+            currentUser = {
+                name: nameInput,
+                avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(nameInput)}&background=random&color=fff`
+            };
+            localStorage.setItem(KEY_USER, JSON.stringify(currentUser));
+            showDashboard();
+        }
+
+        function handleSignOut() {
+            localStorage.removeItem(KEY_USER);
+            currentUser = null;
+            location.reload(); // Refresh to clean state
+        }
+
+        function showDashboard() {
+            document.getElementById('user-name').innerText = currentUser.name;
+            document.getElementById('user-avatar').src = currentUser.avatar;
+            document.getElementById('login-section').style.display = 'none';
+            document.getElementById('user-profile').style.display = 'flex';
+            document.getElementById('dashboard-section').style.display = 'block';
+        }
+
+        /* --- REAL AI: SENTIMENT ANALYSIS --- */
+        let currentAISentiment = 'neutral';
+
+        function analyzeSentiment() {
+            const text = document.getElementById('review-text').value;
+            const indicator = document.getElementById('ai-review-indicator');
+            
+            if (text.length < 15) {
+                indicator.innerText = "AI Sentiment: Awaiting more input...";
+                indicator.style.color = 'var(--text-muted)';
+                return;
+            }
+
+            // Real analysis using 'sentiment' library
+            const result = sentimentAnalyzer.analyze(text);
+            const score = result.score; // Negative number = bad, Positive = good
+            
+            // Categorize based on score
+            if (score > 3) { currentAISentiment = 'highly-positive'; indicator.style.color = '#00ff00'; indicator.innerText = "AI Analysis: Highly Positive vibe! ✨"; } 
+            else if (score > 0) { currentAISentiment = 'positive'; indicator.style.color = '#7cff7c'; indicator.innerText = "AI Analysis: Seems Positive."; } 
+            else if (score < -3) { currentAISentiment = 'highly-negative'; indicator.style.color = '#ff4545'; indicator.innerText = "AI Analysis: Very Negative sentiment detected."; } 
+            else if (score < 0) { currentAISentiment = 'negative'; indicator.style.color = '#ff9696'; indicator.innerText = "AI Analysis: Seems Negative."; } 
+            else { currentAISentiment = 'neutral'; indicator.style.color = 'var(--text-main)'; indicator.innerText = "AI Analysis: Neutral."; }
+        }
+
+        /* --- REVIEW BOARD --- */
+        function postReview() {
+            const movie = document.getElementById('review-movie').value.trim();
+            const title = document.getElementById('review-title').value.trim();
+            const text = document.getElementById('review-text').value.trim();
+            
+            // Get rating value
+            const ratingInput = document.querySelector('input[name="rating"]:checked');
+            const rating = ratingInput ? parseInt(ratingInput.value) : null;
+
+            if (!movie || !title || !text || !rating) {
+                return alert("Complete the form: Title, Rating, Headline, and Critique required.");
+            }
+
+            const newReview = {
+                name: currentUser.name,
+                avatar: currentUser.avatar,
+                movie: movie,
+                rating: rating,
+                title: title,
+                text: text,
+                sentiment: currentAISentiment // Save AI result
+            };
+
+            // Save to LocalStorage "Online" hub
+            let reviews = JSON.parse(localStorage.getItem(KEY_REVIEWS) || '[]');
+            reviews.unshift(newReview);
+            localStorage.setItem(KEY_REVIEWS, JSON.stringify(reviews));
+
+            // Clear form
+            document.getElementById('review-movie').value = '';
+            document.getElementById('review-title').value = '';
+            document.getElementById('review-text').value = '';
+            document.getElementById('ai-review-indicator').innerText = 'AI Sentiment: Posted';
+            if (ratingInput) ratingInput.checked = false;
+
+            loadFeed();
+        }
+
+        // Generate dynamic Star string
+        function getStarHTML(rating) {
+            return `<div class="stars">` + '★'.repeat(rating) + '☆'.repeat(5 - rating) + `</div>`;
+        }
+
+        // Beautify AI sentiment name for card
+        function formatSentiment(s) {
+            return s.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+        }
+
+        /* --- LOAD ONLINE HUB --- */
+        function loadFeed() {
+            const container = document.getElementById('feed-container');
+            const reviews = JSON.parse(localStorage.getItem(KEY_REVIEWS) || '[]');
+
+            container.innerHTML = reviews.map(r => `
+                <div class="feed-card">
+                    <span class="badge-online">Hub Sync</span>
+                    <div class="card-header">
+                        <img src="${r.avatar}" alt="Avatar">
+                        <div>
+                            <strong style="color: #fff; display:block">${r.name}</strong>
+                            <span style="font-size: 10px; color: var(--text-muted);">Verified Reviewer</span>
+                        </div>
+                    </div>
+                    <div style="color: var(--text-muted); font-size: 12px; margin-top: -5px">Critique on <strong>${r.movie}</strong></div>
+                    ${getStarHTML(r.rating)}
+                    
+                    <h4 style="margin: 0; color: #fff; line-height: 1.2">${r.title}</h4>
+                    <p style="margin: 0; font-size: 14px; line-height: 1.4; color: #ccc;">${r.text}</p>
+                    
+                    <div style="margin-top: auto; padding-top: 10px;">
+                        <span style="font-size: 11px; color: #666">Local AI verified sentiment:</span> 
+                        <span class="badge-ai-sentiment">${formatSentiment(r.sentiment)}</span>
+                    </div>
+                </div>
+            `).join('');
+        }
+    </script>
+</body>
+</html>
